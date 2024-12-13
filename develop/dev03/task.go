@@ -1,5 +1,11 @@
 package main
 
+import (
+	"bufio"
+	"errors"
+	"os"
+)
+
 /*
 === Утилита sort ===
 
@@ -28,3 +34,36 @@ package main
 func main() {
 
 }
+
+type flags struct {
+	k int
+	n bool
+	r bool
+	u bool
+}
+
+func readText(filename string) ([]string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, errors.New("файл не найдет")
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+		}
+	}(file)
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, errors.New("ошибка чтения файла")
+	}
+	return lines, nil
+}
+
+//func mySort(str string) (string, error) {
+//
+//}

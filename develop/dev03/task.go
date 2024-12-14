@@ -135,7 +135,7 @@ func repeatedLinesU(lines []string) []string {
 	var res []string                        //результирующий срез
 
 	for _, val := range lines {
-		if _, exist := repetition[val]; !exist { // проверяем, существует ли ключ в мапе
+		if _, ok := repetition[val]; !ok { // проверяем, существует ли ключ в мапе
 			repetition[val] = struct{}{}
 			res = append(res, val)
 		}

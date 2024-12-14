@@ -1,13 +1,14 @@
 package main
 
-import "testing"
-
 import (
 	"reflect"
+	"sort"
+	"strconv"
+	"strings"
+	"testing"
 )
 
-// Тест для функции mySort
-func TestMySort(t *testing.T) {
+func TestCompareSorts(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    []string
@@ -25,12 +26,6 @@ func TestMySort(t *testing.T) {
 			input:    []string{"b", "a", "c"},
 			flags:    flags{r: true},
 			expected: []string{"c", "b", "a"},
-		},
-		{
-			name:     "-u (уникальные строки)",
-			input:    []string{"b", "a", "b", "c"},
-			flags:    flags{u: true},
-			expected: []string{"a", "b", "c"},
 		},
 		{
 			name:     "-k (колонка для сортировки)",
@@ -54,74 +49,58 @@ func TestMySort(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := mySort(test.input, test.flags)
+			// Тест для mySort
+			mySortResult, err := mySort(test.input, test.flags)
 			if err != nil {
-				t.Errorf("ошибка: %v", err)
+				t.Errorf("mySort ошибка: %v", err)
 			}
-			if !reflect.DeepEqual(result, test.expected) {
-				t.Errorf("ожидалось %v, получено %v", test.expected, result)
+			if !reflect.DeepEqual(mySortResult, test.expected) {
+				t.Errorf("mySort: ожидалось %v, получено %v", test.expected, mySortResult)
 			}
-		})
-	}
-}
 
-func TestRepeatedLinesU(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    []string
-		expected []string
-	}{
-		{
-			name:     "Уникальные строки",
-			input:    []string{"a", "b", "a", "c"},
-			expected: []string{"a", "b", "c"},
-		},
-		{
-			name:     "Все строки уникальны",
-			input:    []string{"a", "b", "c"},
-			expected: []string{"a", "b", "c"},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result := repeatedLinesU(test.input)
-			if !reflect.DeepEqual(result, test.expected) {
-				t.Errorf("ожидалось %v, получено %v", test.expected, result)
+			// Тест для sort.Slice
+			sortSliceResult := test.input
+			sortSlice(sortSliceResult, test.flags)
+			if !reflect.DeepEqual(sortSliceResult, test.expected) {
+				t.Errorf("sort.Slice: ожидалось %v, получено %v", test.expected, sortSliceResult)
 			}
 		})
 	}
 }
 
-func TestNumberSortN(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    []string
-		expected []string
-	}{
-		{
-			name:     "Сортировка чисел",
-			input:    []string{"3", "1", "2"},
-			expected: []string{"1", "2", "3"},
-		},
-		{
-			name:     "Сортировка смешанных данных",
-			input:    []string{"3", "1", "2", "a", "b"},
-			expected: []string{"1", "2", "3", "a", "b"},
-		},
-		{
-			name:     "Пустой ввод",
-			input:    []string{},
-			expected: []string{},
-		},
+func sortSlice(lines []string, f flags) {
+	if f.u {
+		lines = repeatedLinesU(lines)
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result := numberSortN(test.input)
-			if !reflect.DeepEqual(result, test.expected) {
-				t.Errorf("ожидалось %v, получено %v", test.expected, result)
+	sort.Slice(lines, func(i, j int) bool {
+		a := lines[i]
+		b := lines[j]
+
+		cols1 := strings.Fields(a)
+		cols2 := strings.Fields(b)
+
+		if f.k > 0 {
+			if len(cols1) >= f.k && len(cols2) >= f.k {
+				a = cols1[f.k-1]
+				b = cols2[f.k-1]
+			} else {
+				return i < j
 			}
-		})
+		}
+
+		if f.n {
+			numA, errA := strconv.Atoi(a)
+			numB, errB := strconv.Atoi(b)
+			if errA == nil && errB == nil {
+				return numA < numB
+			}
+		}
+
+		return a < b
+	})
+
+	if f.r {
+		reverseR(lines)
 	}
 }

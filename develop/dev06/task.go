@@ -25,7 +25,6 @@ import (
 func main() {
 	f := parsFlags()
 	readStdin(f)
-
 }
 
 type flags struct {
@@ -50,6 +49,10 @@ func readStdin(f flags) {
 }
 
 func myCut(str string, f flags) (string, error) {
+	if str == "" {
+		return "", nil
+	}
+
 	columns := strings.Split(str, f.delimiter) //разбиваю str по разделителю \t
 
 	//f и номер колонки в допустимом диапазоне
@@ -67,7 +70,6 @@ func myCut(str string, f flags) (string, error) {
 
 	//не -f - возвращаем всю строку
 	return strings.Join(columns, f.delimiter), nil
-
 }
 
 func parsFlags() flags {

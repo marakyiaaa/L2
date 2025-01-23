@@ -8,7 +8,7 @@ import (
 )
 
 
-func test() (x int) {//2
+func test() (x int) {
 	defer func() {
 		x++
 	}()
@@ -17,7 +17,7 @@ func test() (x int) {//2
 }
 
 
-func anotherTest() int {//1
+func anotherTest() int {
 	var x int
 	defer func() {
 		x++

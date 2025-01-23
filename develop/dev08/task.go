@@ -1,5 +1,9 @@
 package main
 
+import (
+	"fmt"
+)
+
 /*
 === Взаимодействие с ОС ===
 
@@ -13,3 +17,25 @@ package main
 принимать данные из stdin и отправлять в соединение (tcp/udp)
 Программа должна проходить все тесты. Код должен проходить проверки go vet и golint.
 */
+
+func test() (x int) { //2
+	defer func() {
+		x++
+	}()
+	x = 1
+	return
+}
+
+func anotherTest() int { //1
+	var x int
+	defer func() {
+		x++
+	}()
+	x = 1
+	return x
+}
+
+func main() {
+	fmt.Println(test())
+	fmt.Println(anotherTest())
+}

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -13,13 +14,10 @@ import (
 
 /*
 === Взаимодействие с ОС ===
-
 Необходимо реализовать собственный шелл
-
 встроенные команды: cd/pwd/echo/kill/ps
 поддержать fork/exec команды
 конвеер на пайпах
-
 Реализовать утилиту netcat (nc) клиент
 принимать данные из stdin и отправлять в соединение (tcp/udp)
 Программа должна проходить все тесты. Код должен проходить проверки go vet и golint.
@@ -66,14 +64,6 @@ func handlesCommand(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("не указана команда")
 	}
-
-	// в фоновом режиме
-	background := false
-	if args[len(args)-1] == "&" {
-		background = true
-		args = args[:len(args)-1]
-	}
-
 	switch args[0] {
 	case "cd":
 		return cd(args)
@@ -85,24 +75,18 @@ func handlesCommand(args []string) error {
 		return kill(args)
 	case "ps":
 		return ps()
+	case "nc":
+		return nc(args)
 	default:
-		return execute(args, background)
+		return execute(args)
 	}
 }
 
-func execute(args []string, background bool) error {
+func execute(args []string) error {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-
-	if background {
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("ошибка запуска команды: %v", err)
-		}
-		fmt.Printf("[%d] Запущено в фоновом режиме\n", cmd.Process.Pid)
-		return nil
-	}
 
 	// Запуск и ожидание завершения
 	if err := cmd.Run(); err != nil {
@@ -219,5 +203,46 @@ func pipe(commands []string) error {
 		return fmt.Errorf("ошибка выполнения команды: %v", err)
 	}
 
+	return nil
+}
+
+func nc(args []string) error {
+	if len(args) < 3 {
+		return fmt.Errorf("недостаточно аргументов: nc <host> <port> [udp]")
+	}
+
+	host := args[1]
+	port := args[2]
+	protocol := "tcp"
+	if len(args) > 3 && strings.ToLower(args[3]) == "udp" {
+		protocol = "udp"
+	}
+
+	conn, err := net.Dial(protocol, fmt.Sprintf("%s:%s", host, port))
+	if err != nil {
+		return fmt.Errorf("ошибка подключения к %s:%s: %v", host, port, err)
+	}
+	defer conn.Close()
+
+	fmt.Printf("Подключено к %s:%s (%s)\n", host, port, protocol)
+
+	go func() {
+		_, err := io.Copy(os.Stdout, conn)
+		if err != nil {
+			fmt.Printf("Ошибка при чтении данных: %v\n", err)
+		}
+	}()
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		_, err := conn.Write(scanner.Bytes())
+		if err != nil {
+			return fmt.Errorf("ошибка при отправке данных: %v", err)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("ошибка при чтении stdin: %v", err)
+	}
 	return nil
 }

@@ -36,7 +36,7 @@ func NewWget() (*Wget, error) {
 	}, nil
 }
 
-func (w *Wget) downaldPage(pageURL string, depth int) error {
+func (w *Wget) DownloadPage(pageURL string, depth int) error {
 	if w.Depth != -1 && depth > w.Depth {
 		return nil
 	}
@@ -46,19 +46,38 @@ func (w *Wget) downaldPage(pageURL string, depth int) error {
 	}
 	w.visit[pageURL] = true
 
-	// C помощью get запроса получаем содержимое страницы.
 	resp, err := http.Get(pageURL)
 	if err != nil {
-		w.Errors = append(w.Errors, fmt.Errorf("ошибка при загрузке страницы %s: %w", pageURL, err))
+		w.Errors = append(w.Errors, fmt.Errorf("ошибка при загрузке страницы %s: %w", pageURL, err)
 		return err
 	}
-	defer resp.Body.Close() /////
 
-	//// Проверяем статус ответа
-	//if resp.StatusCode != http.StatusOK {
-	//	w.Errors = append(w.Errors, fmt.Errorf("статус ответа для %s: %s", pageURL, resp.Status))
-	//	return nil
-	//}
+	resp.Body.Close()////
+
+	if resp.StatusCode != http.StatusOK {
+		w.Errors = append(w.Errors, fmt.Errorf("статус ответа для %s: %s", pageURL, resp.Status)
+		return nil
+	}
+
+	// Сохранение страницы
+	path, err := w.createPath(pageURL)
+	if err != nil {
+		return err
+	}
+
+	err = w.createDir(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+
+	err = w.saveFile(path, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// Обработка ссылок
+	links := w.saveLink(resp.Body)
+	w.processLinks(links, depth+1)
 
 	return nil
 }
@@ -139,8 +158,28 @@ func (w *Wget) saveLink(reader io.Reader) []string {
 }
 
 // Обработка ссылок
-func (w *Wget) handlingLink(links []string, URL string, dehth int) {
+func (w *Wget) processLinks(links []string, depth int) {
 	for _, link := range links {
-		absURL := w.resolveURL
+		absoluteURL := w.resolveURL(link, w.URL.String())
+		if strings.HasPrefix(absoluteURL, w.URL.String()) {
+			err := w.DownloadPage(absoluteURL, depth+1)
+			if err != nil {
+				return
+			}
+		}
 	}
+}
+
+func (w *Wget) resolveURL(relativeURL, baseURL string) string {
+	u, err := url.Parse(relativeURL)
+	if err == nil {
+		return u.String()
+	}
+
+	u, err = url.JoinPath(baseURL, relativeURL)
+	if err == nil {
+		return u.String()
+	}
+
+	return relativeURL
 }

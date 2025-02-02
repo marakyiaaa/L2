@@ -45,17 +45,34 @@ func main() {
 	//	service.Accept(metricsVisitor)
 	//}
 
-	fmt.Println("=== Testing Command Pattern ===")
-	light := &pattern.SmartLight{}
-	controller := &pattern.ReControl{}
-	lightOn := &pattern.LightOnCommand{Light: light}
-	lightOff := &pattern.LightOffCommand{Light: light}
+	//fmt.Println("=== Testing Command Pattern ===")
+	//light := &pattern.SmartLight{}
+	//controller := &pattern.ReControl{}
+	//lightOn := &pattern.LightOnCommand{Light: light}
+	//lightOff := &pattern.LightOffCommand{Light: light}
+	//
+	//// Нажимаем кнопку включения света
+	//controller.PressButton(lightOn)
+	//// Нажимаем кнопку выключения света
+	//controller.PressButton(lightOff)
+	//// Отмена последней команды (включаем свет обратно)
+	//controller.PressUndo()
 
-	// Нажимаем кнопку включения света
-	controller.PressButton(lightOn)
-	// Нажимаем кнопку выключения света
-	controller.PressButton(lightOff)
-	// Отмена последней команды (включаем свет обратно)
-	controller.PressUndo()
+	fmt.Println("=== Testing Chain Of Responsibility Pattern ===")
+	spamFilter := &pattern.SpamFilter{}
+	authentication := &pattern.Authentication{}
+	access := &pattern.Authorization{}
+	server := &pattern.Server{}
+
+	// Строим цепочку: спам → аутентификация → авторизация → сервер
+	spamFilter.SetNext(authentication).SetNext(access).SetNext(server)
+
+	fmt.Println("\n --- Администратор отправляет сообщение --- \n")
+	request1 := pattern.Request{User: "Admin", Status: "admin", Message: "Привет!", IsLoggedIn: true}
+	spamFilter.Handle(request1)
+
+	fmt.Println(" \n --- Гость без аутентификации --- \n")
+	request2 := pattern.Request{User: "Guest", Status: "guest", Message: "Привет!", IsLoggedIn: false}
+	spamFilter.Handle(request2)
 
 }

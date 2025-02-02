@@ -24,25 +24,38 @@ func main() {
 	//jsonPerson, _ := person.GetJSON()
 	//fmt.Println("JSON для человека:", jsonPerson)
 
-	fmt.Println("=== Testing Visitor Pattern ===")
-	services := []pattern.Service{
-		&pattern.AuthService{},
-		&pattern.OrderService{},
-		&pattern.PaymentService{},
-	}
-	// Посетители
-	loggingVisitor := &pattern.LoggingVisitor{}
-	metricsVisitor := &pattern.MetricsVisitor{}
+	//fmt.Println("=== Testing Visitor Pattern ===")
+	//services := []pattern.Service{
+	//	&pattern.AuthService{},
+	//	&pattern.OrderService{},
+	//	&pattern.PaymentService{},
+	//}
+	//// Посетители
+	//loggingVisitor := &pattern.LoggingVisitor{}
+	//metricsVisitor := &pattern.MetricsVisitor{}
+	//
+	//// Обход всех сервисов и применение посетителей
+	//fmt.Println("=== Логирование запросов ===")
+	//for _, service := range services {
+	//	service.Accept(loggingVisitor)
+	//}
+	//
+	//fmt.Println("\n=== Сбор метрик ===")
+	//for _, service := range services {
+	//	service.Accept(metricsVisitor)
+	//}
 
-	// Обход всех сервисов и применение посетителей
-	fmt.Println("=== Логирование запросов ===")
-	for _, service := range services {
-		service.Accept(loggingVisitor)
-	}
+	fmt.Println("=== Testing Command Pattern ===")
+	light := &pattern.SmartLight{}
+	controller := &pattern.ReControl{}
+	lightOn := &pattern.LightOnCommand{Light: light}
+	lightOff := &pattern.LightOffCommand{Light: light}
 
-	fmt.Println("\n=== Сбор метрик ===")
-	for _, service := range services {
-		service.Accept(metricsVisitor)
-	}
+	// Нажимаем кнопку включения света
+	controller.PressButton(lightOn)
+	// Нажимаем кнопку выключения света
+	controller.PressButton(lightOff)
+	// Отмена последней команды (включаем свет обратно)
+	controller.PressUndo()
 
 }

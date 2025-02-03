@@ -88,16 +88,22 @@ func main() {
 	//	fmt.Println("Ошибка: Неизвестная платёжная система -", randomProvider)
 	//}
 
-	fmt.Println("=== Testing Strategy Pattern ===")
-	lifo := &pattern.Lifo{}
-	cache := pattern.InitCache(lifo)
+	//fmt.Println("=== Testing Strategy Pattern ===")
+	//lifo := &pattern.Lifo{}
+	//cache := pattern.InitCache(lifo)
+	//
+	//cache.Add("a", "1")
+	//cache.Add("b", "2")
+	//cache.Add("c", "3") // Превышает maxCapacity, будет вызвана стратегия вытеснения
+	//
+	//fifo := &pattern.Fifo{}
+	//cache.SetEvict(fifo)
+	//cache.Add("e", "5")
 
-	cache.Add("a", "1")
-	cache.Add("b", "2")
-	cache.Add("c", "3") // Превышает maxCapacity, будет вызвана стратегия вытеснения
-
-	fifo := &pattern.Fifo{}
-	cache.SetEvict(fifo)
-	cache.Add("e", "5")
-
+	fmt.Println("=== Testing State Pattern ===")
+	order := &pattern.Order{}
+	order.SetState(&pattern.NewOrderState{})
+	order.Handle() //проход по состояниям
+	order.Handle() //проход по состояниям
+	order.Handle() //проход по состояниям
 }

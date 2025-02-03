@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"pattern/pattern"
 )
 
@@ -76,16 +75,29 @@ func main() {
 	//request2 := pattern.Request{User: "Guest", Status: "guest", Message: "Привет!", IsLoggedIn: false}
 	//spamFilter.Handle(request2)
 
-	fmt.Println("=== Testing Factory Method Pattern ===")
-	providers := []string{"paypal", "visa", "master"}
-	randomProvider := providers[rand.Intn(len(providers))]
+	//fmt.Println("=== Testing Factory Method Pattern ===")
+	//providers := []string{"paypal", "visa", "master"}
+	//randomProvider := providers[rand.Intn(len(providers))]
+	//
+	//paymentGet := pattern.GetPaymant(randomProvider)
+	//
+	//if paymentGet != nil {
+	//	fmt.Println("Выбран провайдер:", randomProvider)
+	//	fmt.Println(paymentGet.ProcessPayment(10010101.50))
+	//} else {
+	//	fmt.Println("Ошибка: Неизвестная платёжная система -", randomProvider)
+	//}
 
-	paymentGet := pattern.GetPaymant(randomProvider)
+	fmt.Println("=== Testing Strategy Pattern ===")
+	lifo := &pattern.Lifo{}
+	cache := pattern.InitCache(lifo)
 
-	if paymentGet != nil {
-		fmt.Println("Выбран провайдер:", randomProvider)
-		fmt.Println(paymentGet.ProcessPayment(10010101.50))
-	} else {
-		fmt.Println("Ошибка: Неизвестная платёжная система -", randomProvider)
-	}
+	cache.Add("a", "1")
+	cache.Add("b", "2")
+	cache.Add("c", "3") // Превышает maxCapacity, будет вызвана стратегия вытеснения
+
+	fifo := &pattern.Fifo{}
+	cache.SetEvict(fifo)
+	cache.Add("e", "5")
+
 }

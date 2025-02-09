@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
 	"golang.org/x/net/html"
 	"io"
@@ -22,54 +22,55 @@ import (
 // wget --mirror -p --convert-links -P ./<папка> адрес_сайта
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
+	mirror := flag.Bool("mirror", false, "Рекурсивное скачивание")
+	preserve := flag.Bool("p", false, "Скачивание необходимых файлов (CSS, JS, изображения)")
+	convertLinks := flag.Bool("convert-links", false, "Изменять ссылки на локальные")
+	outputDir := flag.String("P", ".", "Каталог для сохранения")
 
-	fmt.Print("Введите URL: ")
-	inputURL, err := reader.ReadString('\n')
+	flag.Parse()
+
+	// Проверяем, передан ли URL
+	if flag.NArg() < 1 {
+		fmt.Println("Использование: wget --mirror -p --convert-links -P <папка> <URL>")
+		os.Exit(1)
+	}
+	inputURL := flag.Arg(0)
+
+	// Парсим URL
+	parsedURL, err := url.Parse(inputURL)
 	if err != nil {
-		log.Println("Ошибка чтения URL:", err)
-	}
-	inputURL = strings.TrimSpace(inputURL)
-	if inputURL == "" {
-		log.Println("URL не может быть пустым")
+		log.Fatalf("Ошибка разбора URL: %v", err)
 	}
 
-	fmt.Print("Введите директорию для сохранения: ")
-	outputDir, err := reader.ReadString('\n')
+	// Получаем абсолютный путь директории
+	absOutputDir, err := filepath.Abs(*outputDir)
 	if err != nil {
-		log.Println("Ошибка чтения директории:", err)
-	}
-	outputDir = strings.TrimSpace(outputDir)
-	if outputDir == "" {
-		log.Println("Директория не может быть пустой")
+		log.Fatalf("Ошибка обработки пути: %v", err)
 	}
 
-	fmt.Print("Введите глубину скачивания: ")
-	var depth int
-	_, err = fmt.Scanln(&depth)
-	if err != nil {
-		log.Println("Ошибка чтения глубины:", err)
-	}
-
+	// Создаем объект Wget
 	wget, err := NewWget()
 	if err != nil {
-		log.Println("Ошибка при создании Wget:", err)
+		log.Fatalf("Ошибка при создании Wget: %v", err)
 	}
 
-	wget.URL, err = url.Parse(inputURL)
-	if err != nil {
-		log.Println("Ошибка при разборе URL:", err)
+	wget.URL = parsedURL
+	wget.OutputDir = absOutputDir
+	wget.Depth = -1 // поддержка глубины рекурсии
 
-	}
+	fmt.Println("Настройки:")
+	fmt.Printf("Рекурсивное скачивание: %v\n", *mirror)
+	fmt.Printf("Сохранение зависимостей (CSS, JS): %v\n", *preserve)
+	fmt.Printf("Конвертация ссылок: %v\n", *convertLinks)
+	fmt.Printf("Каталог сохранения: %s\n", absOutputDir)
 
-	wget.OutputDir = outputDir
-	wget.Depth = depth
-
+	// Запускаем скачивание
 	err = wget.DownloadPage(wget.URL.String(), 0)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Ошибка при скачивании страницы:", err)
 	}
 
+	// Выводим ошибки (если есть)
 	for _, e := range wget.Errors {
 		fmt.Fprintln(os.Stderr, e)
 	}
@@ -93,7 +94,7 @@ func NewWget() (*Wget, error) {
 
 func (w *Wget) DownloadPage(pageURL string, depth int) error {
 	if w == nil {
-		return fmt.Errorf("Wget не инициализирован")
+		return fmt.Errorf("wget не инициализирован")
 	}
 
 	if w.Depth != -1 && depth > w.Depth {
@@ -124,7 +125,7 @@ func (w *Wget) DownloadPage(pageURL string, depth int) error {
 		return err
 	}
 
-	err = w.createDir(filepath.Dir(path))
+	err = w.createDir(path)
 	if err != nil {
 		return err
 	}
@@ -137,7 +138,7 @@ func (w *Wget) DownloadPage(pageURL string, depth int) error {
 		return err
 	}
 
-	links := w.saveLink(&bodyCopy)
+	links := w.saveLink(&bodyCopy, pageURL)
 	w.processLinks(links, depth+1)
 
 	return nil
@@ -151,7 +152,7 @@ func (w *Wget) createPath(pageURL string) (string, error) {
 		return "", err
 	}
 
-	path := filepath.Join(w.OutputDir, parsURL.Path)
+	path := filepath.Join(w.OutputDir, parsURL.Host, parsURL.Path)
 	if strings.HasSuffix(parsURL.Path, "/") {
 		path = filepath.Join(path, "index.html")
 	} else if filepath.Ext(path) == "" {
@@ -166,6 +167,7 @@ func (w *Wget) createDir(path string) error {
 		w.Errors = append(w.Errors, fmt.Errorf("ошибка при создании директории для %s: %w", path, err))
 		return err
 	}
+	log.Printf("Директория создана: %s", filepath.Dir(path))
 	return nil
 }
 
@@ -187,30 +189,22 @@ func (w *Wget) saveFile(path string, content io.Reader) error {
 }
 
 // Сохранение ссылок
-func (w *Wget) saveLink(reader io.Reader) []string {
+func (w *Wget) saveLink(reader io.Reader, baseURL string) []string {
 	var links []string
 	z := html.NewTokenizer(reader)
 
 	for {
 		tokenT := z.Next()
-		if tokenT == html.ErrorToken {
+		if tokenT == html.ErrorToken { //достигнут конец документа - цикл завершается.
 			break
 		}
 
 		token := z.Token()
-		if tokenT == html.StartTagToken {
-			switch token.Data {
-			case "a", "link":
-				for _, attr := range token.Attr {
-					if attr.Key == "href" {
-						links = append(links, attr.Val)
-					}
-				}
-			case "img", "script":
-				for _, attr := range token.Attr {
-					if attr.Key == "src" {
-						links = append(links, attr.Val)
-					}
+		if tokenT == html.StartTagToken { //Если текущий токен является открывающим тегом (<a>, <img>, <script> и т. д.), он проверяет его атрибуты.
+			for _, attr := range token.Attr {
+				if attr.Key == "href" || attr.Key == "src" {
+					absURL := w.resolveURL(attr.Val, baseURL)
+					links = append(links, absURL)
 				}
 			}
 		}
@@ -222,8 +216,8 @@ func (w *Wget) saveLink(reader io.Reader) []string {
 func (w *Wget) processLinks(links []string, depth int) {
 	for _, link := range links {
 		absoluteURL := w.resolveURL(link, w.URL.String())
-		if strings.HasPrefix(absoluteURL, w.URL.String()) {
-			err := w.DownloadPage(absoluteURL, depth+1)
+		if strings.HasPrefix(absoluteURL, w.URL.String()) { //принадлежит ли ссылка тому же домену
+			err := w.DownloadPage(absoluteURL, depth+1) // может зациклиться, если на странице есть ссылки на уже загруженные страницы
 			if err != nil {
 				return
 			}
@@ -231,6 +225,7 @@ func (w *Wget) processLinks(links []string, depth int) {
 	}
 }
 
+// приводит link (которая может быть относительной) к абсолютному UR
 func (w *Wget) resolveURL(relativeURL, baseURL string) string {
 	if baseURL == "" {
 		return relativeURL
@@ -241,6 +236,7 @@ func (w *Wget) resolveURL(relativeURL, baseURL string) string {
 		return relativeURL
 	}
 
+	// является ли абсолютным
 	if u.IsAbs() {
 		return u.String()
 	}

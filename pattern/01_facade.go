@@ -45,14 +45,14 @@ func (g *Glow) StartGlow() {
 
 // Общая структура фасада - объединения нужного функционала
 type Cinema struct {
-	tv    TV
-	music Music
-	glow  Glow
+	tv    *TV
+	music *Music
+	glow  *Glow
 }
 
 // Конструктор для Cinema
 func NewCinema() *Cinema {
-	return &Cinema{tv: TV{}, music: Music{}, glow: Glow{}}
+	return &Cinema{tv: &TV{}, music: &Music{}, glow: &Glow{}}
 }
 
 func (c *Cinema) StartCinema() {
